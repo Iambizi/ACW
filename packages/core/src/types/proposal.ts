@@ -82,6 +82,7 @@ export interface ProposalObject {
 
   // Lifecycle execution tracking (optional until execution starts)
   approvedAt?: number;
+  autoApprovalReason?: string; // Auditable rule ID or description for L4 overrides
   rejectedAt?: number;
   txHash?: `0x${string}`;
   failureReason?: string;

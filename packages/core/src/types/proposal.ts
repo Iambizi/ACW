@@ -8,6 +8,7 @@
 export type ProposalStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
+  | 'AUTO_APPROVED'
   | 'EXECUTING'
   | 'CONFIRMED'
   | 'REJECTED'

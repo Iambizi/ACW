@@ -8,6 +8,8 @@
 export type ProposalStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
+  | 'HANDOFF_PENDING'     // ApprovalGate fired onHandoff, awaiting async response
+  | 'HANDOFF_EXPIRED'     // Handoff deadline passed, fallback behavior in effect
   | 'AUTO_APPROVED'
   | 'EXECUTING'
   | 'CONFIRMED'
@@ -53,6 +55,12 @@ export interface ToolTraceEntry {
 /**
  * The core contract for any action in Warden.
  * Nothing executes without a ProposalObject in the PENDING_APPROVAL state.
+ * 
+ * ProposalObject.id serves as the correlation key (approvalId) 
+ * for the depute ApprovalGate async handoff flow. No adapter layer 
+ * or mapping is required — the proposal ID and the gate correlation 
+ * ID are the same object by design. This is intentional and must 
+ * be preserved.
  */
 export interface ProposalObject {
   /** UUID of the proposal */

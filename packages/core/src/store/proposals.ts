@@ -7,7 +7,6 @@ export interface ProposalState {
   // Actions
   addProposal: (proposal: ProposalObject) => void;
   approveProposal: (id: string) => void;
-  autoApproveProposal: (id: string, reason: string) => void;
   rejectProposal: (id: string) => void;
   failProposal: (id: string, reason: string) => void;
   confirmProposal: (id: string, txHash: `0x${string}`) => void;
@@ -42,26 +41,6 @@ export const proposalStore = createStore<ProposalState>()((set, get) => ({
     });
   },
 
-  autoApproveProposal: (id, reason) => {
-    set((state) => {
-      const p = state.proposals[id];
-      // Only valid to jump from DRAFT or PENDING_APPROVAL into AUTO_APPROVED state
-      if (!p || (p.status !== 'DRAFT' && p.status !== 'PENDING_APPROVAL')) return state;
-
-      return {
-        proposals: {
-          ...state.proposals,
-          [id]: { 
-            ...p, 
-            status: 'AUTO_APPROVED', 
-            approvedAt: Date.now(),
-            autoApprovalReason: reason
-          },
-        },
-      };
-    });
-  },
-
   rejectProposal: (id) => {
     set((state) => {
       const p = state.proposals[id];
@@ -79,8 +58,7 @@ export const proposalStore = createStore<ProposalState>()((set, get) => ({
   failProposal: (id, reason) => {
     set((state) => {
       const p = state.proposals[id];
-      // Note: both EXECUTING and AUTO_APPROVED can fail during on-chain execution
-      if (!p || (p.status !== 'EXECUTING' && p.status !== 'AUTO_APPROVED')) return state;
+      if (!p || p.status !== 'EXECUTING') return state;
 
       return {
         proposals: {
@@ -94,7 +72,7 @@ export const proposalStore = createStore<ProposalState>()((set, get) => ({
   confirmProposal: (id, txHash) => {
     set((state) => {
       const p = state.proposals[id];
-      if (!p || (p.status !== 'EXECUTING' && p.status !== 'AUTO_APPROVED')) return state;
+      if (!p || p.status !== 'EXECUTING') return state;
 
       return {
         proposals: {

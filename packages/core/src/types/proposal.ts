@@ -10,7 +10,6 @@ export type ProposalStatus =
   | 'PENDING_APPROVAL'
   | 'HANDOFF_PENDING'     // ApprovalGate fired onHandoff, awaiting async response
   | 'HANDOFF_EXPIRED'     // Handoff deadline passed, fallback behavior in effect
-  | 'AUTO_APPROVED'
   | 'EXECUTING'
   | 'CONFIRMED'
   | 'REJECTED'
@@ -90,7 +89,6 @@ export interface ProposalObject {
 
   // Lifecycle execution tracking (optional until execution starts)
   approvedAt?: number;
-  autoApprovalReason?: string; // Auditable rule ID or description for L4 overrides
   rejectedAt?: number;
   txHash?: `0x${string}`;
   failureReason?: string;

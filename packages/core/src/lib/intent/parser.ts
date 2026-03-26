@@ -20,7 +20,7 @@ export const claudeParser: IntentParser = {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307', // fast model for intent parsing
+          model: 'claude-haiku-4-5-20251001', // fast model for intent parsing
           max_tokens: 1024,
           system: INTENT_SYSTEM_PROMPT,
           messages: [

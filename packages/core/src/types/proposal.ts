@@ -41,6 +41,7 @@ export type ParsedIntent =
   | { type: 'swap'; fromToken: string; toToken: string; fromAmount: bigint; rawConfidence: number; ambiguities: string[] }
   | { type: 'transfer'; toAddress: `0x${string}`; amount: bigint; token: string; rawConfidence: number; ambiguities: string[] }
   | { type: 'stake'; token: string; amount: bigint; protocol: string; rawConfidence: number; ambiguities: string[] }
+  | { type: 'research'; query: string; context: string[]; rawConfidence: number; ambiguities: string[] }
   | { type: 'unknown'; rawConfidence: number; ambiguities: string[] };
 
 export interface ToolTraceEntry {

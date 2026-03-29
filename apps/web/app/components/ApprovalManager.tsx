@@ -5,6 +5,7 @@ import { useStore } from 'zustand';
 import { proposalStore } from '@warden/core';
 import type { ProposalObject } from '@warden/core';
 import { CONFIDENCE_THRESHOLDS } from '@warden/core';
+import { useExecuteProposal } from '../hooks/useExecuteProposal';
 
 // depute UI primitives — acquired into packages/ui/src/oversight/
 import { ApprovalGate } from '@warden/ui/src/oversight/ApprovalGate';
@@ -61,6 +62,10 @@ export function ApprovalManager() {
 // ---------------------------------------------------------------------------
 
 function ProposalRenderer({ proposal }: { proposal: ProposalObject }) {
+  // Fire the real sendTransaction when this proposal enters EXECUTING state.
+  // This is the only place sendTransaction is called — wagmi hooks require React context.
+  useExecuteProposal(proposal);
+
   // DRAFT — intent is resolved but quote not yet fetched → show PlanCard skeleton
   if (proposal.status === 'DRAFT') {
     if (proposal.parsedIntent) {

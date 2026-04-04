@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  transpilePackages: ["@warden/ui", "@warden/core"],
 };
 
 export default nextConfig;

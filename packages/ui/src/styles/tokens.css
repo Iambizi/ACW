@@ -1,0 +1,115 @@
+:root {
+  /* Colors - Zinc scale (Dark Mode optimized) */
+  --ax-color-gray-50: #fafafa;
+  --ax-color-gray-100: #f4f4f5;
+  --ax-color-gray-200: #e4e4e7;
+  --ax-color-gray-300: #d4d4d8;
+  --ax-color-gray-400: #a1a1aa;
+  --ax-color-gray-500: #71717a;
+  --ax-color-gray-600: #52525b;
+  --ax-color-gray-700: #3f3f46;
+  --ax-color-gray-800: #27272a;
+  --ax-color-gray-900: #18181b;
+
+  --ax-color-blue-50: #eff6ff;
+  --ax-color-blue-200: #bfdbfe;
+  --ax-color-blue-300: #93c5fd;
+  --ax-color-blue-500: #3b82f6;
+  --ax-color-blue-600: #2563eb;
+  --ax-color-blue-700: #1d4ed8;
+
+  --ax-color-green-50: #f0fdf4;
+  --ax-color-green-300: #86efac;
+  --ax-color-green-600: #16a34a;
+
+  --ax-color-amber-50: #fffbeb;
+  --ax-color-amber-200: #fde68a;
+  --ax-color-amber-300: #fcd34d;
+  --ax-color-amber-500: #f59e0b;
+  --ax-color-amber-600: #d97706;
+  --ax-color-amber-700: #b45309;
+
+  --ax-color-red-50: #fef2f2;
+  --ax-color-red-300: #fca5a5;
+  --ax-color-red-600: #dc2626;
+  --ax-color-red-700: #b91c1c;
+
+  /* Surfaces & Text (Dark Theme) */
+  --ax-surface-primary: #09090b;
+  --ax-surface-secondary: #18181b;
+  --ax-border-color: #27272a;
+  
+  --ax-text-primary: #fafafa;
+  --ax-text-secondary: #a1a1aa;
+  --ax-text-tertiary: #52525b;
+
+  /* Status Tokens */
+  --ax-status-waiting-bg: rgba(59, 130, 246, 0.2);
+  --ax-status-waiting-color: #93c5fd;
+  --ax-status-completed-bg: rgba(22, 163, 74, 0.2);
+  --ax-status-completed-color: #86efac;
+  --ax-status-completed-border: #16a34a;
+  --ax-status-failed-bg: rgba(220, 38, 38, 0.2);
+  --ax-status-failed-color: #fca5a5;
+  --ax-status-failed-border: #dc2626;
+  --ax-status-pending-border: #3b82f6;
+  --ax-status-active-color: #93c5fd;
+
+  /* Confidence levels */
+  --ax-confidence-high-bg: rgba(22, 163, 74, 0.15);
+  --ax-confidence-high-color: #86efac;
+  --ax-confidence-medium-bg: rgba(245, 158, 11, 0.15);
+  --ax-confidence-medium-color: #fcd34d;
+  --ax-confidence-low-bg: rgba(220, 38, 38, 0.15);
+  --ax-confidence-low-color: #fca5a5;
+
+  /* Typography */
+  --ax-font-family: inherit;
+  --ax-font-family-mono: monospace;
+  --ax-font-size-xs: 0.75rem;
+  --ax-font-size-sm: 0.875rem;
+  --ax-font-size-base: 1rem;
+  --ax-font-size-lg: 1.125rem;
+  
+  --ax-font-weight-medium: 500;
+  --ax-font-weight-semibold: 600;
+
+  --ax-line-height-tight: 1.25;
+  --ax-line-height-normal: 1.5;
+  --ax-line-height-relaxed: 1.625;
+
+  /* Spacing */
+  --ax-space-1: 0.25rem;
+  --ax-space-2: 0.5rem;
+  --ax-space-3: 0.75rem;
+  --ax-space-4: 1rem;
+  --ax-space-5: 1.5rem;
+  --ax-space-6: 2rem;
+  --ax-space-8: 3rem;
+
+  /* Borders & Radius */
+  --ax-border-width: 1px;
+  --ax-radius-sm: 0.25rem;
+  --ax-radius-md: 0.5rem;
+  --ax-radius-lg: 0.75rem;
+  --ax-radius-full: 9999px;
+
+  /* Shadows */
+  --ax-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --ax-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+
+  /* Animations */
+  --ax-duration-fast: 150ms;
+  --ax-duration-normal: 300ms;
+  --ax-duration-slow: 500ms;
+  --ax-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ax-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}

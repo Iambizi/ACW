@@ -34,14 +34,14 @@
   --ax-color-red-600: #dc2626;
   --ax-color-red-700: #b91c1c;
 
-  /* Surfaces & Text (Dark Theme) */
-  --ax-surface-primary: #09090b;
-  --ax-surface-secondary: #18181b;
-  --ax-border-color: #27272a;
+  /* Surfaces & Text (Light Theme) */
+  --ax-surface-primary: #ffffff;
+  --ax-surface-secondary: #f4f4f5;
+  --ax-border-color: #e4e4e7;
   
-  --ax-text-primary: #fafafa;
-  --ax-text-secondary: #a1a1aa;
-  --ax-text-tertiary: #52525b;
+  --ax-text-primary: #09090b;
+  --ax-text-secondary: #52525b;
+  --ax-text-tertiary: #a1a1aa;
 
   /* Status Tokens */
   --ax-status-waiting-bg: rgba(59, 130, 246, 0.2);

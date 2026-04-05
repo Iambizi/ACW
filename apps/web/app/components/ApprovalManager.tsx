@@ -8,10 +8,9 @@ import { CONFIDENCE_THRESHOLDS } from '@warden/core';
 import { useExecuteProposal } from '../hooks/useExecuteProposal';
 
 // depute UI primitives — acquired into packages/ui/src/oversight/
-import { ApprovalGate } from '@warden/ui/src/oversight/ApprovalGate';
 import { PlanCard } from '@warden/ui/src/oversight/PlanCard';
 import { ArtifactCard } from '@warden/ui/src/oversight/ArtifactCard';
-import { ConfidenceMeter } from '@warden/ui/src/oversight/ConfidenceMeter';
+import { CompositeGate } from './CompositeGate';
 import { RunControls } from '@warden/ui/src/oversight/RunControls';
 import { ToolTrace } from '@warden/ui/src/oversight/ToolTrace';
 
@@ -99,53 +98,62 @@ function ProposalRenderer({ proposal }: { proposal: ProposalObject }) {
     const confidenceScore = proposal.confidence * 100;
     // Auto-expand ToolTrace for high-risk proposals — no toggle required
     const isHighRisk = proposal.riskLevel === 'high';
+    
+    // Manual origins should not render AI specifics
+    const isManual = proposal.rawInput?.startsWith('manual:');
+
     // Compute visual warning level from governance thresholds
     const isBlockedConf = confidenceScore < CONFIDENCE_THRESHOLDS.BLOCK_EXECUTION * 100;
+    
+    // Only show confidence warnings if it's an AI proxy attempt
+    const showWarning = isBlockedConf && !isManual;
 
     return (
       <div className="flex flex-col gap-4">
         {/* Confidence feedback — warn before the gate so the user reads it first */}
-        {isBlockedConf && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-950/40 border border-red-800/50 text-red-300 text-sm">
-            <span className="font-mono text-xs bg-red-900/60 px-2 py-0.5 rounded">LOW CONFIDENCE</span>
+        {showWarning && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50/80 border border-red-200 text-red-700 text-sm shadow-sm">
+            <span className="font-mono text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">LOW CONFIDENCE</span>
             <span>Confidence below execution threshold — review the plan carefully before approving.</span>
           </div>
         )}
 
-        {/* Primary gate */}
-        <ApprovalGate
-          title={proposal.rawInput || 'Review Proposed Transaction'}
+        {/* Primary composite gate with integrated confidence meter */}
+        <CompositeGate
+          title={proposal.rawInput?.replace('manual:', '') || 'Review Proposed Transaction'}
           description={proposal.txPath.map((tx) => tx.description).join(' → ')}
           status="pending"
-          confidence={confidenceScore}
-          agentReasoning={`Risk level: ${proposal.riskLevel.toUpperCase()}. ` + (proposal.warnings.length > 0 ? `Warnings: ${proposal.warnings.join('; ')}.` : 'No warnings.')}
+          hideConfidence={isManual}
+          confidenceScore={confidenceScore}
+          confidence={isManual ? undefined : confidenceScore}
+          agentReasoning={isManual ? undefined : `Risk level: ${proposal.riskLevel.toUpperCase()}. ` + (proposal.warnings.length > 0 ? `Warnings: ${proposal.warnings.join('; ')}.` : 'No warnings.')}
           onApprove={() => proposalStore.getState().approveProposal(proposal.id)}
           onReject={() => proposalStore.getState().rejectProposal(proposal.id)}
         />
 
-        {/* Confidence meter and ToolTrace side panel */}
-        <div className="grid grid-cols-2 gap-4">
-          <ConfidenceMeter value={confidenceScore} />
-
-          {proposal.toolTrace && proposal.toolTrace.length > 0 && (
-            <div className="col-span-2">
-              <ToolTrace
-                calls={proposal.toolTrace.map((t, idx) => ({
-                  id: String(idx),
-                  name: t.toolName,
-                  input: t.input,
-                  output: t.output,
-                  duration: t.durationMs,
-                  status: 'completed',
-                  timestamp: new Date(t.timestamp).toISOString(),
-                }))}
-                // Progressive disclosure: collapsed by default, expanded when riskLevel is 'high'
-                defaultExpandedAll={isHighRisk}
-                expandable
-              />
-            </div>
-          )}
-        </div>
+        {/* ToolTrace side panel (Hidden for purely manual actions) */}
+        {!isManual && (
+          <div className="w-full">
+            {proposal.toolTrace && proposal.toolTrace.length > 0 && (
+              <div className="w-full">
+                <ToolTrace
+                  calls={proposal.toolTrace.map((t, idx) => ({
+                    id: String(idx),
+                    name: t.toolName,
+                    input: t.input,
+                    output: t.output,
+                    duration: t.durationMs,
+                    status: 'completed',
+                    timestamp: new Date(t.timestamp).toISOString(),
+                  }))}
+                  // Progressive disclosure: collapsed by default, expanded when riskLevel is 'high'
+                  defaultExpandedAll={isHighRisk}
+                  expandable
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

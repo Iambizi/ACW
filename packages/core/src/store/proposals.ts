@@ -1,4 +1,5 @@
 import { createStore } from 'zustand/vanilla';
+import { persist } from 'zustand/middleware';
 import type { ProposalObject } from '../types';
 
 export interface ProposalState {
@@ -15,10 +16,11 @@ export interface ProposalState {
 
 /**
  * A discrete vanilla Zustand store for Proposal metadata.
- * Use bounded vanilla stores in core so UI frameworks can subscribe 
- * to them using useSyncExternalStore or React-specific bindings gracefully.
+ * Wrapped in persist middleware to survive page refreshes.
  */
-export const proposalStore = createStore<ProposalState>()((set, get) => ({
+export const proposalStore = createStore<ProposalState>()(
+  persist(
+    (set, get) => ({
   proposals: {},
 
   addProposal: (proposal) => {
@@ -99,4 +101,6 @@ export const proposalStore = createStore<ProposalState>()((set, get) => ({
       };
     });
   },
+}), {
+  name: 'warden-proposals-storage',
 }));

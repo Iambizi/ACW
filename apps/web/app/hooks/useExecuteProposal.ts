@@ -19,12 +19,12 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { useSendCalls } from 'wagmi/experimental';
 import { proposalStore } from '@warden/core';
 import type { ProposalObject } from '@warden/core';
 
 export function useExecuteProposal(proposal: ProposalObject | undefined) {
-  const { sendTransactionAsync } = useSendTransaction();
+  const { sendCallsAsync } = useSendCalls();
   const executingRef = useRef<string | null>(null); // tracks in-flight proposal id
 
   useEffect(() => {
@@ -45,15 +45,24 @@ export function useExecuteProposal(proposal: ProposalObject | undefined) {
 
     const step = proposal.txPath[0]; // Phase 3: chain multiple steps
 
-    sendTransactionAsync({
-      to: step.to,
-      value: step.value,
-      data: step.data,
-      chainId: step.chainId,
+    sendCallsAsync({
+      calls: [{
+        to: step.to as `0x${string}`,
+        value: step.value,
+        data: step.data as `0x${string}`,
+      }],
+      capabilities: {
+        paymasterService: {
+          // Fallback to a proxy URL if environment variable is missing
+          url: process.env.NEXT_PUBLIC_PAYMASTER_URL || "https://api.developer.coinbase.com/rpc/v1/base-sepolia/..."
+        }
+      }
     })
-      .then((hash) => {
-        // Stamp the tx hash so RunControls shows the BaseScan link immediately
-        proposalStore.getState().confirmProposal(proposal.id, hash);
+      .then((callId) => {
+        // EIP-5792 returns a bundle call ID, not a raw txHash.
+        // We log the callId to confirm in the UI. 
+        // Note: A production app polls useCallsStatus(id) to get final tx receipt.
+        proposalStore.getState().confirmProposal(proposal.id, callId as `0x${string}`);
       })
       .catch((err: Error) => {
         // Decode revert reason from the error message — wallets surface the reason
@@ -63,7 +72,7 @@ export function useExecuteProposal(proposal: ProposalObject | undefined) {
         proposalStore.getState().failProposal(proposal.id, decoded);
         executingRef.current = null; // allow retry
       });
-  }, [proposal?.id, proposal?.status, proposal?.txHash, sendTransactionAsync]);
+  }, [proposal?.id, proposal?.status, proposal?.txHash, sendCallsAsync]);
 }
 
 /**

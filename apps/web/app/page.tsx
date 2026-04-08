@@ -16,12 +16,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-8 lg:p-24 relative overflow-hidden">
+    <main className="flex min-h-screen flex-col items-center px-4 py-6 sm:p-8 lg:p-24 relative overflow-hidden pb-32">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-200 via-zinc-50 to-zinc-50 -z-10" />
       
-      <header className="w-full flex justify-between items-center max-w-5xl mb-12">
+      <header className="w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 max-w-5xl mb-8 sm:mb-12">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 to-zinc-500">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 to-zinc-500">
             Warden Console
           </h1>
           <span className="text-xs text-zinc-500 tracking-widest uppercase font-mono mt-1">L3 Delegated Agent</span>
@@ -37,14 +37,14 @@ export default function Home() {
         ) : (
           <div className="flex flex-col gap-6">
             {/* Navigation Tabs */}
-            <div className="flex gap-2 p-1 border border-zinc-200/80 rounded-xl bg-white/80 w-fit backdrop-blur-xl shadow-sm">
+            <div className="flex gap-1 p-1 border border-zinc-200/80 rounded-xl bg-white/80 w-full sm:w-fit backdrop-blur-xl shadow-sm">
               {(['dashboard', 'send', 'swap'] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === tab 
-                      ? 'bg-zinc-900 text-zinc-50 shadow-sm' 
+                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === tab
+                      ? 'bg-zinc-900 text-zinc-50 shadow-sm'
                       : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50'
                   }`}
                 >

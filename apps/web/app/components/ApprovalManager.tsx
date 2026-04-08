@@ -6,6 +6,7 @@ import { proposalStore } from '@warden/core';
 import type { ProposalObject } from '@warden/core';
 import { CONFIDENCE_THRESHOLDS } from '@warden/core';
 import { useExecuteProposal } from '../hooks/useExecuteProposal';
+import { useProposalDeadlines } from '../hooks/useProposalDeadlines';
 
 // depute UI primitives — acquired into packages/ui/src/oversight/
 import { PlanCard } from '@warden/ui/src/oversight/PlanCard';
@@ -18,6 +19,9 @@ import { ToolTrace } from '@warden/ui/src/oversight/ToolTrace';
 const TERMINAL_STATUSES = ['CONFIRMED', 'REJECTED', 'FAILED', 'HANDOFF_EXPIRED', 'EXPIRED'] as const;
 
 export function ApprovalManager() {
+  // Background watcher — auto-expires stale PENDING_APPROVAL proposals
+  useProposalDeadlines();
+
   const proposals = useStore(proposalStore, (state: any) => state.proposals);
   const proposalList = Object.values(proposals) as ProposalObject[];
 

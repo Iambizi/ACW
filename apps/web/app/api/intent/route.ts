@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { claudeParser } from '@warden/core';
+import { checkRateLimit, getIp } from '../../lib/rateLimiter';
 
 export async function POST(req: Request) {
+  const limit = checkRateLimit(getIp(req));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${limit.retryAfter}s.` },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const { input } = await req.json();
     if (!input || typeof input !== 'string') {

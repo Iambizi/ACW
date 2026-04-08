@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { geminiResearchAgent } from '@warden/core/src/lib/research/agent';
 import type { ThinkingLevel } from '@warden/core/src/lib/research/types';
+import { checkRateLimit, getIp } from '../../lib/rateLimiter';
 
 /**
  * POST /api/research
@@ -17,6 +18,14 @@ import type { ThinkingLevel } from '@warden/core/src/lib/research/types';
  * It is a pure information flow — research results only.
  */
 export async function POST(request: Request) {
+  const limit = checkRateLimit(getIp(request));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${limit.retryAfter}s.` },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+    );
+  }
+
   try {
     const body = await request.json();
     const { input, thinkingLevel } = body;

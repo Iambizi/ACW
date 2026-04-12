@@ -58,11 +58,10 @@ export function useExecuteProposal(proposal: ProposalObject | undefined) {
         }
       }
     })
-      .then((callId) => {
-        // EIP-5792 returns a bundle call ID, not a raw txHash.
-        // We log the callId to confirm in the UI. 
+      .then((result) => {
+        // EIP-5792 returns { id: string } — extract the bundle call ID for receipts.
         // Note: A production app polls useCallsStatus(id) to get final tx receipt.
-        proposalStore.getState().confirmProposal(proposal.id, callId as `0x${string}`);
+        proposalStore.getState().confirmProposal(proposal.id, result.id as `0x${string}`);
       })
       .catch((err: Error) => {
         // Decode revert reason from the error message — wallets surface the reason

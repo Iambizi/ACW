@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useExecuteProposal — fires a real on-chain transaction when a ProposalObject
+ * useExecuteProposal — fires real on-chain transactions when a ProposalObject
  * transitions to EXECUTING status.
  *
  * This hook MUST live in the React layer. wagmi hooks cannot be called from
@@ -9,28 +9,82 @@
  *
  * Lifecycle:
  * 1. approveProposal() → store sets status = 'EXECUTING'
- * 2. This hook detects status === 'EXECUTING' with no txHash yet
- * 3. Calls wagmi sendTransaction with the first TxStep from proposal.txPath
- * 4. On success: calls confirmProposal(id, txHash) → status = 'CONFIRMED'
- * 5. On failure: calls failProposal(id, decodedReason) → status = 'FAILED'
+ * 2. This hook detects status === 'EXECUTING' with no bundleId yet
+ * 3. Iterates over ALL steps in proposal.txPath, firing sendCallsAsync for each
+ * 4. After each sendCallsAsync resolves, writes bundleId to store via setBundleId
+ * 5. useCallsStatus polls the wallet until the bundle is settled
+ * 6. Real txHash is extracted from the receipt and written via confirmProposal
  *
- * Multi-step transactions (Phase 3): txPath may contain more than one TxStep.
- * The current implementation executes txPath[0] only. Phase 3 will chain steps.
+ * Multi-step handling:
+ *   Each TxStep in txPath is executed sequentially via individual sendCallsAsync
+ *   calls. The store's `currentStepIndex` field tracks which step is active,
+ *   allowing the UI to render per-step progress.
+ *
+ *   Note: In a production flow, the approve + swap steps could be batched into
+ *   a single EIP-5792 calls array if the wallet supports atomic batching.
+ *   We execute them sequentially here for maximum wallet compatibility.
  */
 
-import { useEffect, useRef } from 'react';
-import { useSendCalls } from 'wagmi/experimental';
+import { useEffect, useRef, useCallback } from 'react';
+import { useSendCalls, useCallsStatus } from 'wagmi/experimental';
 import { proposalStore } from '@warden/core';
 import type { ProposalObject } from '@warden/core';
+
+// How often to re-check the bundle status with the wallet (ms)
+const POLLING_INTERVAL_MS = 2_000;
+// How long to wait for bundle settlement before giving up (ms)
+const POLLING_TIMEOUT_MS = 5 * 60 * 1_000; // 5 minutes
 
 export function useExecuteProposal(proposal: ProposalObject | undefined) {
   const { sendCallsAsync } = useSendCalls();
   const executingRef = useRef<string | null>(null); // tracks in-flight proposal id
 
+  // --- Phase 2: Poll bundle status after sendCalls resolves ---
+  // bundleId is written to the store after the first sendCalls round-trip.
+  const bundleId = proposal?.bundleId;
+
+  const { data: callsStatus } = useCallsStatus({
+    id: bundleId ?? '',
+    query: {
+      // Only poll when we have a bundleId and are still EXECUTING
+      enabled: !!bundleId && proposal?.status === 'EXECUTING' && !proposal?.txHash,
+      refetchInterval: POLLING_INTERVAL_MS,
+    },
+  });
+
+  // When callsStatus reports settled, extract the real txHash and confirm
+  useEffect(() => {
+    if (!proposal || !bundleId) return;
+    if (proposal.status !== 'EXECUTING') return;
+    if (proposal.txHash) return; // already confirmed
+
+    if (callsStatus?.status === 'success') {
+      // EIP-5792: receipts is an array of per-call receipts.
+      // Grab the last call's transactionHash as the canonical tx hash.
+      const receipts = (callsStatus as any).receipts ?? [];
+      const lastReceipt = receipts[receipts.length - 1];
+      const realTxHash: `0x${string}` | undefined = lastReceipt?.transactionHash;
+
+      if (realTxHash) {
+        proposalStore.getState().confirmProposal(proposal.id, realTxHash);
+      } else {
+        // Bundle settled but no hash in receipt — use the bundle ID as a sentinel
+        proposalStore.getState().confirmProposal(proposal.id, bundleId as `0x${string}`);
+      }
+    } else if (callsStatus?.status === 'failure') {
+      proposalStore.getState().failProposal(
+        proposal.id,
+        'Bundle execution failed in the wallet. Check your wallet for details.'
+      );
+      executingRef.current = null;
+    }
+  }, [callsStatus?.status, proposal?.id, proposal?.status, proposal?.txHash, bundleId]);
+
+  // --- Phase 1: Execute all txPath steps sequentially ---
   useEffect(() => {
     if (!proposal) return;
     if (proposal.status !== 'EXECUTING') return;
-    if (proposal.txHash) return; // already broadcast — don't double-send
+    if (proposal.bundleId) return;  // already dispatched to wallet
     if (executingRef.current === proposal.id) return; // already in flight
 
     if (!proposal.txPath || proposal.txPath.length === 0) {
@@ -43,35 +97,50 @@ export function useExecuteProposal(proposal: ProposalObject | undefined) {
 
     executingRef.current = proposal.id;
 
-    const step = proposal.txPath[0]; // Phase 3: chain multiple steps
+    // Execute all steps in order. Each step is sent as its own EIP-5792 call bundle.
+    // This preserves sequential ordering (approve must mine before swap).
+    (async () => {
+      const store = proposalStore.getState();
 
-    sendCallsAsync({
-      calls: [{
-        to: step.to as `0x${string}`,
-        value: step.value,
-        data: step.data as `0x${string}`,
-      }],
-      capabilities: {
-        paymasterService: {
-          // Fallback to a proxy URL if environment variable is missing
-          url: process.env.NEXT_PUBLIC_PAYMASTER_URL || "https://api.developer.coinbase.com/rpc/v1/base-sepolia/..."
+      for (let i = 0; i < proposal.txPath.length; i++) {
+        const step = proposal.txPath[i];
+
+        // Update visible step progress in the store
+        store.setCurrentStep(proposal.id, i);
+
+        try {
+          const result = await sendCallsAsync({
+            calls: [{
+              to: step.to as `0x${string}`,
+              value: step.value,
+              data: step.data as `0x${string}`,
+            }],
+            capabilities: {
+              paymasterService: {
+                url: process.env.NEXT_PUBLIC_PAYMASTER_URL
+                  ?? 'https://api.developer.coinbase.com/rpc/v1/base-sepolia/...',
+              },
+            },
+          });
+
+          // Write the bundle ID from the LAST step — this is what we'll poll.
+          // (All steps share the same proposal; the last bundle ID is the receipt source.)
+          store.setBundleId(proposal.id, result.id);
+
+        } catch (err: unknown) {
+          const raw = (err as Error).message ?? 'Transaction reverted with no reason.';
+          const decoded = decodeRevertReason(raw);
+          store.failProposal(proposal.id, `Step ${i + 1}/${proposal.txPath.length} failed: ${decoded}`);
+          executingRef.current = null;
+          return; // Abort remaining steps on any failure
         }
       }
-    })
-      .then((result) => {
-        // EIP-5792 returns { id: string } — extract the bundle call ID for receipts.
-        // Note: A production app polls useCallsStatus(id) to get final tx receipt.
-        proposalStore.getState().confirmProposal(proposal.id, result.id as `0x${string}`);
-      })
-      .catch((err: Error) => {
-        // Decode revert reason from the error message — wallets surface the reason
-        // in the message string. Strip the RPC noise if present.
-        const raw = err.message ?? 'Transaction reverted with no reason.';
-        const decoded = decodeRevertReason(raw);
-        proposalStore.getState().failProposal(proposal.id, decoded);
-        executingRef.current = null; // allow retry
-      });
-  }, [proposal?.id, proposal?.status, proposal?.txHash, sendCallsAsync]);
+
+      // All steps dispatched. The useCallsStatus polling effect above will
+      // now watch the last bundleId and confirm or fail the proposal.
+    })();
+
+  }, [proposal?.id, proposal?.status, proposal?.bundleId, sendCallsAsync]);
 }
 
 /**

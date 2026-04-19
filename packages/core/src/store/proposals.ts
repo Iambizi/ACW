@@ -12,6 +12,14 @@ export interface ProposalState {
   failProposal: (id: string, reason: string) => void;
   confirmProposal: (id: string, txHash: `0x${string}`) => void;
   expireProposal: (id: string) => void;
+  /**
+   * Records the EIP-5792 bundle ID after useSendCalls resolves.
+   * The bundle ID is separate from the final txHash — polling useCallsStatus
+   * will eventually resolve it to a real on-chain transaction hash.
+   */
+  setBundleId: (id: string, bundleId: string) => void;
+  /** Updates the current step index during multi-step execution. */
+  setCurrentStep: (id: string, stepIndex: number) => void;
 }
 
 /**
@@ -97,6 +105,32 @@ export const proposalStore = createStore<ProposalState>()(
         proposals: {
           ...state.proposals,
           [id]: { ...p, status: 'EXPIRED' },
+        },
+      };
+    });
+  },
+
+  setBundleId: (id, bundleId) => {
+    set((state) => {
+      const p = state.proposals[id];
+      if (!p) return state;
+      return {
+        proposals: {
+          ...state.proposals,
+          [id]: { ...p, bundleId },
+        },
+      };
+    });
+  },
+
+  setCurrentStep: (id, stepIndex) => {
+    set((state) => {
+      const p = state.proposals[id];
+      if (!p) return state;
+      return {
+        proposals: {
+          ...state.proposals,
+          [id]: { ...p, currentStepIndex: stepIndex },
         },
       };
     });

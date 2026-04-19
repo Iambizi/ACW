@@ -76,7 +76,7 @@ export function ChatInput() {
          };
       });
 
-      // 4. If intent is swap, fetch quote
+      // 4. Route by intent type
       if (parsedIntent.type === 'swap') {
          const quoteRes = await fetch('/api/quote', {
             method: 'POST',
@@ -87,11 +87,6 @@ export function ChatInput() {
          if (!quoteRes.ok) throw new Error('Failed to fetch quote');
          const quoteData = await quoteRes.json();
 
-         // The quote endpoint returns { txSteps, estimatedGas, ... }
-         // We merge these updates and push to PENDING_APPROVAL
-         
-         // In a full implementation, `simulateTxPath` and `evaluateRisk` would be run here.
-         // For UI Stage 2 unblocking, we transition to PENDING_APPROVAL to trigger the ApprovalGate.
          proposalStore.setState(state => {
             const p = state.proposals[proposalId];
             if (!p) return state;
@@ -102,24 +97,92 @@ export function ChatInput() {
                      ...p, 
                      txPath: quoteData.txPath || [],
                      estimatedGas: quoteData.estimatedGas ? BigInt(quoteData.estimatedGas) : p.estimatedGas,
-                     status: 'PENDING_APPROVAL', // Triggers ApprovalGate!
+                     status: 'PENDING_APPROVAL',
                      confidence: parsedIntent.rawConfidence || 0.8,
+                     riskLevel: quoteData.riskLevel || p.riskLevel,
+                     warnings: [...p.warnings, ...(quoteData.warnings || [])],
                   }
                }
             };
          });
-      } else {
-         // Failsafe for non-swap
+
+      } else if (parsedIntent.type === 'transfer') {
+         // Build the transfer TxStep via the new /api/transfer route (no 0x quote needed)
+         const transferRes = await fetch('/api/transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parsedIntent, userAddress: address })
+         });
+
+         if (!transferRes.ok) throw new Error('Failed to construct transfer');
+         const transferData = await transferRes.json();
+
+         // Re-hydrate BigInt for txPath.value fields (serialized as string over HTTP)
+         const txPath = (transferData.txPath || []).map((step: any) => ({
+            ...step,
+            value: BigInt(step.value ?? '0'),
+         }));
+
          proposalStore.setState(state => {
             const p = state.proposals[proposalId];
             if (!p) return state;
             return {
                proposals: {
                   ...state.proposals,
-                  [proposalId]: { 
-                     ...p, 
+                  [proposalId]: {
+                     ...p,
+                     txPath,
+                     estimatedGas: transferData.estimatedGas ? BigInt(transferData.estimatedGas) : p.estimatedGas,
+                     status: 'PENDING_APPROVAL',
+                     confidence: parsedIntent.rawConfidence || 0.85,
+                     riskLevel: transferData.riskLevel || p.riskLevel,
+                     warnings: [...p.warnings, ...(transferData.warnings || [])],
+                  }
+               }
+            };
+         });
+
+      } else if (parsedIntent.type === 'stake') {
+         // Stake intents are surfaced at the ApprovalGate with a protocol warning.
+         // The txPath is empty — the user must confirm before we route to a protocol.
+         // TODO v2: integrate Aave/Lido protocol adapters.
+         proposalStore.setState(state => {
+            const p = state.proposals[proposalId];
+            if (!p) return state;
+            return {
+               proposals: {
+                  ...state.proposals,
+                  [proposalId]: {
+                     ...p,
+                     txPath: [],
+                     status: 'PENDING_APPROVAL',
+                     confidence: parsedIntent.rawConfidence || 0.6,
+                     riskLevel: 'medium',
+                     warnings: [
+                        ...p.warnings,
+                        `Staking via ${(parsedIntent as any).protocol || 'unknown protocol'} is not yet integrated. Approving will have no on-chain effect in v1.`,
+                     ],
+                  }
+               }
+            };
+         });
+
+      } else {
+         // research / unknown — reject with a human-readable reason
+         const reason = parsedIntent.type === 'research'
+            ? 'Research queries are handled conversationally and do not produce transactions.'
+            : `Intent type "${parsedIntent.type}" is not supported in this version.`;
+
+         proposalStore.setState(state => {
+            const p = state.proposals[proposalId];
+            if (!p) return state;
+            return {
+               proposals: {
+                  ...state.proposals,
+                  [proposalId]: {
+                     ...p,
                      status: 'REJECTED',
-                     failureReason: 'Unsupported intent type for V1 UI wrapper.'
+                     failureReason: reason,
                   }
                }
             };

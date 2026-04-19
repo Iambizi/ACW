@@ -176,8 +176,13 @@ function ProposalRenderer({ proposal }: { proposal: ProposalObject }) {
   }
 
   // EXECUTING — highest-stakes state per spec. Show RunControls immediately.
-  // Show tx hash as soon as it's available. FAILED state must show decoded reason.
+  // Show per-step progress for multi-step txPaths (e.g. approve → swap).
   if (proposal.status === 'EXECUTING') {
+    const totalSteps = proposal.txPath.length;
+    const currentStep = proposal.currentStepIndex ?? 0;
+    const stepDesc = proposal.txPath[currentStep]?.description ?? 'Executing…';
+    const isMultiStep = totalSteps > 1;
+
     return (
       <div className="flex flex-col gap-3">
         <RunControls
@@ -185,6 +190,24 @@ function ProposalRenderer({ proposal }: { proposal: ProposalObject }) {
           showLabel
           onStop={() => proposalStore.getState().failProposal(proposal.id, 'User manually halted execution')}
         />
+
+        {/* Per-step progress — only rendered for multi-step paths */}
+        {isMultiStep && (
+          <div className="flex flex-col gap-1.5 px-4 py-3 bg-zinc-900/40 border border-zinc-800/60 rounded-lg">
+            {proposal.txPath.map((step, idx) => {
+              const isDone = idx < currentStep;
+              const isActive = idx === currentStep;
+              return (
+                <div key={idx} className={`flex items-center gap-2.5 text-xs transition-colors ${isDone ? 'text-emerald-400' : isActive ? 'text-zinc-200' : 'text-zinc-600'}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isDone ? 'bg-emerald-400' : isActive ? 'bg-amber-400 animate-pulse' : 'bg-zinc-700'}`} />
+                  <span className="font-mono">{`Step ${idx + 1}/${totalSteps}`}</span>
+                  <span className="truncate">{step.description}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {proposal.txHash && (
           <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900/60 border border-zinc-800 rounded-lg text-xs font-mono">
             <span className="text-zinc-500">tx</span>

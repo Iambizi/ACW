@@ -91,6 +91,15 @@ export interface ProposalObject {
   // Lifecycle execution tracking (optional until execution starts)
   approvedAt?: number;
   rejectedAt?: number;
+  /** Final on-chain transaction hash (set after useCallsStatus resolves the bundle). */
   txHash?: `0x${string}`;
+  /**
+   * EIP-5792 bundle ID returned by useSendCalls.
+   * Distinct from txHash — the bundle ID is used to poll useCallsStatus
+   * until the wallet reports a settled receipt with a real txHash.
+   */
+  bundleId?: string;
+  /** Index of the txPath step currently being executed (0-based). */
+  currentStepIndex?: number;
   failureReason?: string;
 }
